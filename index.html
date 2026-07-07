@@ -3,93 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Capture Demo</title>
+    <title>Advanced Media Studio</title>
     <style>
+        /* Modern Dark Mode Styling */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
             text-align: center;
-            background-color: #f4f4f9;
-            padding: 20px;
+            padding: 30px 15px;
+            margin: 0;
+        }
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            background-color: #1e1e1e;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h2 {
+            margin-top: 0;
+            color: #ffffff;
+            font-size: 24px;
+        }
+        p {
+            color: #a0a0a0;
+            font-size: 14px;
+        }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #333;
+            aspect-ratio: 4/3;
         }
         #video {
             width: 100%;
-            max-width: 400px;
-            border: 2px solid #333;
-            border-radius: 8px;
-            background-color: #000;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* Top Floating Live Recording Status */
+        .status-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            visibility: hidden;
+        }
+        .recording .status-overlay {
+            visibility: visible;
+        }
+        .red-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1s infinite;
+        }
+        /* Button Styles */
+        .btn-group {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
         }
         .btn {
-            margin: 10px 5px;
-            padding: 12px 24px;
+            flex: 1;
+            padding: 14px;
             font-size: 16px;
+            font-weight: bold;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
-        #startBtn { background-color: #28a745; }
-        #stopBtn { background-color: #dc3545; }
-        .btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+        #startBtn { background-color: #2eb85c; }
+        #startBtn:hover { background-color: #229949; }
+        #stopBtn { background-color: #e55353; }
+        #stopBtn:hover { background-color: #d13c3c; }
+        .btn:disabled {
+            background-color: #3a3a3a !important;
+            color: #777 !important;
+            cursor: not-allowed;
+        }
+        /* Loading Text Feedback */
+        #uploadingStatus {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #321fdb;
+            display: none;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
-    <h2>Audio & Video Recording Demo</h2>
-    <p>Please grant camera and microphone permissions when prompted.</p>
+    <div class="container" id="mainContainer">
+        <h2>Media Capture Studio</h2>
+        <p>Grant permission to activate the high-definition recording system.</p>
 
-    <video id="video" autoplay playsinline muted></video>
-    <br>
-    
-    <button id="startBtn" class="btn">Start Recording</button>
-    <button id="stopBtn" class="btn" disabled>Stop & Send Recording</button>
+        <div class="video-wrapper">
+            <div class="status-overlay">
+                <div class="red-dot"></div>
+                <span id="timerLabel">00:00</span>
+            </div>
+            <video id="video" autoplay playsinline muted></video>
+        </div>
+
+        <div class="btn-group">
+            <button id="startBtn" class="btn">Start Recording</button>
+            <button id="stopBtn" class="btn" disabled>Stop & Send</button>
+        </div>
+
+        <div id="uploadingStatus">📤 Transmitting file safely to Telegram...</div>
+    </div>
 
     <script>
         const video = document.getElementById('video');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const mainContainer = document.getElementById('mainContainer');
+        const timerLabel = document.getElementById('timerLabel');
+        const uploadingStatus = document.getElementById('uploadingStatus');
 
         let mediaRecorder;
         let recordedChunks = [];
         let localStream;
+        let timerInterval;
+        let secondsElapsed = 0;
 
-        // 1. Ask for both permissions as soon as the page opens
+        // 1. Fire up camera and mic immediately when user arrives
         async function initMedia() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720, facingMode: "user" }, 
+                    audio: true 
+                });
                 video.srcObject = localStream;
             } catch (err) {
-                console.error("Permissions denied:", err);
-                alert("This website requires camera and microphone permissions to work.");
+                console.error("Setup error:", err);
+                alert("Please grant camera/microphone permissions to utilize this panel.");
             }
         }
 
-        // 2. Start recording when the green button is clicked
+        // 2. Start the clock visualization
+        function startTimer() {
+            secondsElapsed = 0;
+            timerLabel.innerText = "00:00";
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                let secs = secondsElapsed % 60;
+                let mins = Math.floor(secondsElapsed / 60);
+                timerLabel.innerText = 
+                    (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
+                
+                // Safety Auto-Stop at exactly 30 seconds
+                if (secondsElapsed >= 30) {
+                    stopRecording();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        // 3. Begin Recording Action
         startBtn.addEventListener('click', () => {
-            if (!localStream) return alert("Permissions not granted yet.");
+            if (!localStream) return alert("System media streams are inactive.");
             
             recordedChunks = [];
             mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
             
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) recordedChunks.push(event.data);
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
             };
 
-            mediaRecorder.onstop = uploadVideo;
+            mediaRecorder.onstop = handleUpload;
+            
             mediaRecorder.start();
+            mainContainer.classList.add('recording');
+            startTimer();
 
             startBtn.disabled = true;
             stopBtn.disabled = false;
         });
 
-        // 3. Stop recording when the red button is clicked
-        stopBtn.addEventListener('click', () => {
-            mediaRecorder.stop();
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-        });
+        // 4. Manual Stop Button Trigger
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+                stopTimer();
+                mainContainer.classList.remove('recording');
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        stopBtn.addEventListener('click', stopRecording);
 
-        // 4. Send the recorded file automatically to the background server
-        function uploadVideo() {
+        // 5. Advanced Upload with Visual Processing Feedback
+        function handleUpload() {
+            uploadingStatus.style.display = "block"; // Show the text
+            
             const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
             const formData = new FormData();
             formData.append('video_file', videoBlob, 'recording.webm');
@@ -100,10 +230,13 @@
             })
             .then(response => response.text())
             .then(data => {
-                alert("Recording successfully sent to the server!");
+                uploadingStatus.style.display = "none"; // Hide loading status
+                alert("✨ Video parsed and loaded directly onto ShaswatCam Bot successfully!");
             })
-            .catch(error => {
-                console.error("Upload failed:", error);
+            .catch(err => {
+                uploadingStatus.style.display = "none";
+                console.error("Routing error:", err);
+                alert("Upload dropped out. Check server configs.");
             });
         }
 
