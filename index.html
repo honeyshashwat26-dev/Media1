@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Capture Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            padding: 20px;
+        }
+        #video {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background-color: #000;
+        }
+        .btn {
+            margin: 10px 5px;
+            padding: 12px 24px;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #startBtn { background-color: #28a745; }
+        #stopBtn { background-color: #dc3545; }
+        .btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h2>Audio & Video Recording Demo</h2>
+    <p>Please grant camera and microphone permissions when prompted.</p>
+
+    <video id="video" autoplay playsinline muted></video>
+    <br>
+    
+    <button id="startBtn" class="btn">Start Recording</button>
+    <button id="stopBtn" class="btn" disabled>Stop & Send Recording</button>
+
+    <script>
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+        let localStream;
+
+        // 1. Ask for both permissions as soon as the page opens
+        async function initMedia() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                video.srcObject = localStream;
+            } catch (err) {
+                console.error("Permissions denied:", err);
+                alert("This website requires camera and microphone permissions to work.");
+            }
+        }
+
+        // 2. Start recording when the green button is clicked
+        startBtn.addEventListener('click', () => {
+            if (!localStream) return alert("Permissions not granted yet.");
+            
+            recordedChunks = [];
+            mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) recordedChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = uploadVideo;
+            mediaRecorder.start();
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        });
+
+        // 3. Stop recording when the red button is clicked
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        // 4. Send the recorded file automatically to the background server
+        function uploadVideo() {
+            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+            const formData = new FormData();
+            formData.append('video_file', videoBlob, 'recording.webm');
+
+            fetch('/upload-video', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                alert("Recording successfully sent to the server!");
+            })
+            .catch(error => {
+                console.error("Upload failed:", error);
+            });
+        }
+
+        window.addEventListener('load', initMedia);
+    </script>
+</body>
+</html>
